@@ -12,11 +12,9 @@ app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
 app.config['MAX_CONTENT_LENGTH'] = 100 * 1024 * 1024  # 100MB max total size
 
-UPLOAD_FOLDER = 'uploads'
 CONVERTED_FOLDER = 'converted'
 
 # Create directories if they don't exist
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 
 def allowed_file(filename):
@@ -30,13 +28,14 @@ def cleanup_old_files():
     import time
     current_time = time.time()
     for folder in [CONVERTED_FOLDER]:
-        for filename in os.listdir(folder):
-            filepath = os.path.join(folder, filename)
-            if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 3600:
-                try:
-                    os.remove(filepath)
-                except:
-                    pass
+        if os.path.exists(folder):
+            for filename in os.listdir(folder):
+                filepath = os.path.join(folder, filename)
+                if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 3600:
+                    try:
+                        os.remove(filepath)
+                    except:
+                        pass
 
 @app.route('/')
 def index():
@@ -96,6 +95,9 @@ def upload_file():
             base_name = filename.rsplit('.', 1)[0]
             unique_id = str(uuid.uuid4())[:8]
             avif_filename = f"{base_name}_{unique_id}.avif"
+            
+            # Ensure converted folder exists
+            os.makedirs(CONVERTED_FOLDER, exist_ok=True)
             avif_path = os.path.join(CONVERTED_FOLDER, avif_filename)
             
             img.save(avif_path, 'AVIF', lossless=True, quality=100)
