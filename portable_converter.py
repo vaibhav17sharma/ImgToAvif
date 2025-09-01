@@ -6,19 +6,39 @@ import webbrowser
 import threading
 import time
 import platform
+import venv
+
+def setup_venv():
+    """Create and setup virtual environment"""
+    venv_path = 'venv'
+    
+    if not os.path.exists(venv_path):
+        print("Creating virtual environment...")
+        venv.create(venv_path, with_pip=True)
+    
+    # Get the correct python executable path
+    if platform.system() == 'Windows':
+        python_exe = os.path.join(venv_path, 'Scripts', 'python.exe')
+        pip_exe = os.path.join(venv_path, 'Scripts', 'pip.exe')
+    else:
+        python_exe = os.path.join(venv_path, 'bin', 'python')
+        pip_exe = os.path.join(venv_path, 'bin', 'pip')
+    
+    return python_exe, pip_exe
 
 def install_requirements():
-    """Install required packages"""
-    requirements = ['Flask==2.3.3', 'Pillow==10.0.1', 'pillow-avif-plugin==1.4.3']
-    
-    for req in requirements:
-        try:
-            subprocess.check_call([sys.executable, '-m', 'pip', 'install', req], 
+    """Install required packages in virtual environment"""
+    try:
+        python_exe, pip_exe = setup_venv()
+        requirements = ['Flask==2.3.3', 'Pillow==10.0.1', 'pillow-avif-plugin==1.4.3']
+        
+        for req in requirements:
+            subprocess.check_call([pip_exe, 'install', req], 
                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except subprocess.CalledProcessError:
-            print(f"Failed to install {req}")
-            return False
-    return True
+        return python_exe
+    except Exception as e:
+        print(f"Failed to setup environment: {e}")
+        return None
 
 def cleanup_old_files():
     """Remove files older than 10 minutes from converted folder"""
@@ -44,13 +64,23 @@ def main():
     print(f"Running on {platform.system()} {platform.release()}")
     print()
     
-    # Install requirements
-    print("Installing dependencies...")
-    if not install_requirements():
-        print("Failed to install dependencies. Please install manually:")
-        print("pip install Flask Pillow pillow-avif-plugin")
+    # Check if already running in venv
+    if hasattr(sys, 'real_prefix') or (hasattr(sys, 'base_prefix') and sys.base_prefix != sys.prefix):
+        # Already in venv, proceed normally
+        pass
+    else:
+        # Not in venv, setup and restart
+        print("Setting up environment...")
+        python_exe = install_requirements()
+        if not python_exe:
+            print("Failed to setup environment. Please install manually:")
+            print("pip install Flask Pillow pillow-avif-plugin")
+            return
+        
+        # Restart script with venv python
+        print("Restarting with virtual environment...")
+        subprocess.call([python_exe, __file__])
         return
-    
     # Create required directories
     os.makedirs('converted', exist_ok=True)
     
