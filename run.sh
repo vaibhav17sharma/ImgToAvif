@@ -5,10 +5,10 @@ echo "=============================="
 # Check for Python
 if command -v python3 &> /dev/null; then
     echo "Found Python3, starting converter..."
-    python3 portable_converter.py
+    python3 converter.py
 elif command -v python &> /dev/null; then
     echo "Found Python, starting converter..."
-    python portable_converter.py
+    python converter.py
 else
     echo "ERROR: Python not found!"
     echo ""

@@ -6,21 +6,21 @@ REM Check for Python
 python --version >nul 2>&1
 if %errorlevel% == 0 (
     echo Found Python, starting converter...
-    python portable_converter.py
+    python converter.py
     goto end
 )
 
 python3 --version >nul 2>&1
 if %errorlevel% == 0 (
     echo Found Python3, starting converter...
-    python3 portable_converter.py
+    python3 converter.py
     goto end
 )
 
 py --version >nul 2>&1
 if %errorlevel% == 0 (
     echo Found Python via py launcher, starting converter...
-    py portable_converter.py
+    py converter.py
     goto end
 )
 
