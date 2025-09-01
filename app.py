@@ -24,14 +24,14 @@ def allowed_file(filename):
     return ext in ['png', 'jpg', 'jpeg']
 
 def cleanup_old_files():
-    """Clean up files older than 1 hour"""
+    """Clean up files older than 10 minutes"""
     import time
     current_time = time.time()
     for folder in [CONVERTED_FOLDER]:
         if os.path.exists(folder):
             for filename in os.listdir(folder):
                 filepath = os.path.join(folder, filename)
-                if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 3600:
+                if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 600:
                     try:
                         os.remove(filepath)
                     except:

@@ -10,11 +10,15 @@ import venv
 
 def setup_venv():
     """Create and setup virtual environment"""
-    venv_path = 'venv'
+    venv_path = os.path.abspath('venv')
     
     if not os.path.exists(venv_path):
         print("Creating virtual environment...")
-        venv.create(venv_path, with_pip=True)
+        try:
+            venv.create(venv_path, with_pip=True)
+        except Exception as e:
+            print(f"Failed to create virtual environment: {e}")
+            raise
     
     # Get the correct python executable path
     if platform.system() == 'Windows':
@@ -23,6 +27,12 @@ def setup_venv():
     else:
         python_exe = os.path.join(venv_path, 'bin', 'python')
         pip_exe = os.path.join(venv_path, 'bin', 'pip')
+    
+    # Verify executables exist
+    if not os.path.exists(python_exe):
+        raise FileNotFoundError(f"Python executable not found: {python_exe}")
+    if not os.path.exists(pip_exe):
+        raise FileNotFoundError(f"Pip executable not found: {pip_exe}")
     
     return python_exe, pip_exe
 
@@ -79,7 +89,7 @@ def main():
         
         # Restart script with venv python
         print("Restarting with virtual environment...")
-        subprocess.call([python_exe, __file__])
+        subprocess.call([python_exe, os.path.abspath(__file__)])
         return
     # Create required directories
     os.makedirs('converted', exist_ok=True)
