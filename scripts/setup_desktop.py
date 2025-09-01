@@ -25,15 +25,17 @@ def create_windows_shortcut():
     
     shortcut_path = os.path.join(desktop, "AVIF Converter.lnk")
     target = os.path.join(os.getcwd(), "scripts", "run.bat")
+    working_dir = os.path.join(os.getcwd(), "scripts")
     
     print(f"Creating shortcut at: {shortcut_path}")
     print(f"Target: {target}")
+    print(f"Working Directory: {working_dir}")
     
     # Create VBS script to make shortcut
     vbs_script = f'''Set oWS = WScript.CreateObject("WScript.Shell")
 Set oLink = oWS.CreateShortcut("{shortcut_path}")
 oLink.TargetPath = "{target}"
-oLink.WorkingDirectory = "{os.getcwd()}"
+oLink.WorkingDirectory = "{working_dir}"
 oLink.Save
 '''
     
