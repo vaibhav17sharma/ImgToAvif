@@ -6,9 +6,28 @@ import subprocess
 
 def create_windows_shortcut():
     """Create Windows desktop shortcut using VBS script"""
-    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+    # Try multiple desktop locations
+    desktop_paths = [
+        os.path.join(os.path.expanduser("~"), "Desktop"),
+        os.path.join(os.path.expanduser("~"), "OneDrive", "Desktop"),
+        os.environ.get('USERPROFILE', '') + "\\Desktop",
+        os.environ.get('USERPROFILE', '') + "\\OneDrive\\Desktop"
+    ]
+    
+    desktop = None
+    for path in desktop_paths:
+        if os.path.exists(path):
+            desktop = path
+            break
+    
+    if not desktop:
+        raise Exception("Could not find Desktop folder")
+    
     shortcut_path = os.path.join(desktop, "AVIF Converter.lnk")
     target = os.path.join(os.getcwd(), "run.bat")
+    
+    print(f"Creating shortcut at: {shortcut_path}")
+    print(f"Target: {target}")
     
     # Create VBS script to make shortcut
     vbs_script = f'''Set oWS = WScript.CreateObject("WScript.Shell")
@@ -24,12 +43,20 @@ oLink.Save
         f.write(vbs_script)
     
     try:
-        subprocess.run(["cscript", "//nologo", vbs_file], check=True)
+        result = subprocess.run(["cscript", "//nologo", vbs_file], capture_output=True, text=True)
         os.remove(vbs_file)
-        print(f"Desktop shortcut created: {shortcut_path}")
-    except subprocess.CalledProcessError:
-        os.remove(vbs_file)
-        raise Exception("Failed to create shortcut using VBS script")
+        if result.returncode == 0:
+            print(f"Desktop shortcut created: {shortcut_path}")
+            if os.path.exists(shortcut_path):
+                print("Shortcut file confirmed to exist")
+            else:
+                print("Warning: Shortcut creation reported success but file not found")
+        else:
+            raise Exception(f"VBS script failed: {result.stderr}")
+    except Exception as e:
+        if os.path.exists(vbs_file):
+            os.remove(vbs_file)
+        raise e
 
 def create_mac_shortcut():
     """Create macOS desktop shortcut"""
