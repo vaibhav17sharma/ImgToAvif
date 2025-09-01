@@ -5,28 +5,31 @@ import platform
 import subprocess
 
 def create_windows_shortcut():
-    """Create Windows desktop shortcut"""
-    try:
-        import winshell
-        from win32com.client import Dispatch
-    except ImportError:
-        print("Installing shortcut dependencies...")
-        subprocess.check_call([sys.executable, '-m', 'pip', 'install', 'winshell', 'pywin32'])
-        import winshell
-        from win32com.client import Dispatch
-    
-    desktop = winshell.desktop()
-    path = os.path.join(desktop, "AVIF Converter.lnk")
+    """Create Windows desktop shortcut using VBS script"""
+    desktop = os.path.join(os.path.expanduser("~"), "Desktop")
+    shortcut_path = os.path.join(desktop, "AVIF Converter.lnk")
     target = os.path.join(os.getcwd(), "run.bat")
     
-    shell = Dispatch('WScript.Shell')
-    shortcut = shell.CreateShortCut(path)
-    shortcut.Targetpath = target
-    shortcut.WorkingDirectory = os.getcwd()
-    shortcut.IconLocation = target
-    shortcut.save()
+    # Create VBS script to make shortcut
+    vbs_script = f'''Set oWS = WScript.CreateObject("WScript.Shell")
+Set oLink = oWS.CreateShortcut("{shortcut_path}")
+oLink.TargetPath = "{target}"
+oLink.WorkingDirectory = "{os.getcwd()}"
+oLink.Save
+'''
     
-    print(f"Desktop shortcut created: {path}")
+    # Write and execute VBS script
+    vbs_file = "create_shortcut.vbs"
+    with open(vbs_file, 'w') as f:
+        f.write(vbs_script)
+    
+    try:
+        subprocess.run(["cscript", "//nologo", vbs_file], check=True)
+        os.remove(vbs_file)
+        print(f"Desktop shortcut created: {shortcut_path}")
+    except subprocess.CalledProcessError:
+        os.remove(vbs_file)
+        raise Exception("Failed to create shortcut using VBS script")
 
 def create_mac_shortcut():
     """Create macOS desktop shortcut"""
