@@ -20,20 +20,23 @@ def install_requirements():
             return False
     return True
 
+def cleanup_old_files():
+    """Remove files older than 10 minutes from converted folder"""
+    current_time = time.time()
+    if os.path.exists('converted'):
+        for filename in os.listdir('converted'):
+            filepath = os.path.join('converted', filename)
+            if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 600:
+                try:
+                    os.remove(filepath)
+                except:
+                    pass
+
 def cleanup_files():
     """Background cleanup task"""
     while True:
-        time.sleep(3600)  # Wait 1 hour
-        current_time = time.time()
-        for folder in ['converted']:
-            if os.path.exists(folder):
-                for filename in os.listdir(folder):
-                    filepath = os.path.join(folder, filename)
-                    if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 3600:
-                        try:
-                            os.remove(filepath)
-                        except:
-                            pass
+        time.sleep(600)  # Wait 10 minutes
+        cleanup_old_files()
 
 def main():
     print("PNG/JPG to AVIF Converter")
@@ -50,6 +53,9 @@ def main():
     
     # Create required directories
     os.makedirs('converted', exist_ok=True)
+    
+    # Clean old files on startup
+    cleanup_old_files()
     
     # Start cleanup thread
     cleanup_thread = threading.Thread(target=cleanup_files, daemon=True)
