@@ -7,8 +7,38 @@ import threading
 import time
 import platform
 
+def setup_venv_and_install():
+    """Create venv and install packages (Mac/Linux)"""
+    import venv
+    
+    venv_path = 'venv'
+    if not os.path.exists(venv_path):
+        print("Creating virtual environment...")
+        venv.create(venv_path, with_pip=True)
+    
+    # Get venv python and pip paths
+    if platform.system() == 'Windows':
+        python_exe = os.path.join(venv_path, 'Scripts', 'python')
+        pip_exe = os.path.join(venv_path, 'Scripts', 'pip')
+    else:
+        python_exe = os.path.join(venv_path, 'bin', 'python')
+        pip_exe = os.path.join(venv_path, 'bin', 'pip')
+    
+    requirements = ['Flask', 'Pillow', 'pillow-avif-plugin']
+    
+    print("Installing dependencies in virtual environment...")
+    for req in requirements:
+        print(f"Installing {req}...")
+        try:
+            subprocess.check_call([pip_exe, 'install', req])
+        except subprocess.CalledProcessError:
+            print(f"Failed to install {req}")
+            return None
+    
+    return python_exe
+
 def install_requirements():
-    """Install required packages"""
+    """Install required packages (Windows fallback)"""
     requirements = ['Flask', 'Pillow', 'pillow-avif-plugin']
     
     print("Installing dependencies...")
@@ -52,11 +82,29 @@ def main():
         import pillow_avif
     except ImportError:
         print("Installing required packages...")
-        if not install_requirements():
-            print("Failed to install packages. Please run manually:")
-            print("pip install Flask Pillow pillow-avif-plugin")
-            input("Press Enter to exit...")
+        
+        # Use venv on Mac/Linux, direct install on Windows
+        if platform.system() in ['Darwin', 'Linux']:
+            python_exe = setup_venv_and_install()
+            if not python_exe:
+                print("Failed to setup environment. Please run manually:")
+                print("python3 -m venv venv")
+                print("source venv/bin/activate")
+                print("pip install Flask Pillow pillow-avif-plugin")
+                input("Press Enter to exit...")
+                return
+            
+            # Restart with venv python
+            print("Restarting with virtual environment...")
+            subprocess.call([python_exe, os.path.abspath(__file__)])
             return
+        else:
+            # Windows - direct install
+            if not install_requirements():
+                print("Failed to install packages. Please run manually:")
+                print("pip install Flask Pillow pillow-avif-plugin")
+                input("Press Enter to exit...")
+                return
     
     # Create required directories
     os.makedirs('converted', exist_ok=True)

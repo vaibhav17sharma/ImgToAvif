@@ -1,4 +1,4 @@
-from flask import Flask, request, render_template, send_file, flash, redirect, url_for
+from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session
 from PIL import Image
 import pillow_avif
 import os
@@ -6,6 +6,7 @@ import io
 import zipfile
 import uuid
 import tempfile
+import math
 from werkzeug.utils import secure_filename
 
 app = Flask(__name__)
@@ -43,6 +44,100 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        # AJAX request - return JSON
+        return upload_ajax()
+    else:
+        # Regular form submission - return HTML
+        return upload_form()
+
+def upload_ajax():
+    # Handle AJAX upload and return JSON response
+    cleanup_old_files()
+    
+    files = request.files.getlist('files')
+    if not files or all(f.filename == '' for f in files):
+        return {'success': False, 'error': 'No files selected'}
+    
+    if len(files) > 50:
+        return {'success': False, 'error': 'Maximum 50 files allowed per batch'}
+    
+    converted_files = []
+    errors = []
+    skipped = []
+    
+    for file in files:
+        if not file or not file.filename:
+            continue
+            
+        if not allowed_file(file.filename):
+            skipped.append(file.filename)
+            continue
+            
+        filename = secure_filename(file.filename)
+        if not filename:
+            skipped.append(file.filename)
+            continue
+            
+        try:
+            # Reset file pointer
+            file.stream.seek(0)
+            original_size = len(file.read())
+            file.stream.seek(0)
+            
+            # Validate image
+            img = Image.open(file.stream)
+            img.verify()
+            
+            # Reset and reopen for conversion
+            file.stream.seek(0)
+            img = Image.open(file.stream)
+            
+            # Convert to RGB only for non-transparent formats
+            if img.mode in ('LA', 'P'):
+                if 'transparency' in img.info:
+                    img = img.convert('RGBA')
+                else:
+                    img = img.convert('RGB')
+            # Keep RGBA for transparent PNGs
+            
+            # Keep original filename, just change extension
+            base_name = filename.rsplit('.', 1)[0]
+            avif_filename = f"{base_name}.avif"
+            
+            # Ensure converted folder exists
+            os.makedirs(CONVERTED_FOLDER, exist_ok=True)
+            avif_path = os.path.join(CONVERTED_FOLDER, avif_filename)
+            
+            img.save(avif_path, 'AVIF', lossless=True)
+            
+            # Get converted file size
+            converted_size = os.path.getsize(avif_path)
+            savings_percent = ((original_size - converted_size) / original_size) * 100
+            
+            converted_files.append({
+                'filename': avif_filename,
+                'original_name': filename,
+                'original_size': original_size,
+                'converted_size': converted_size,
+                'savings_percent': savings_percent
+            })
+            
+        except Exception as e:
+            errors.append(f"{file.filename}: {str(e)}")
+    
+    if not converted_files:
+        return {'success': False, 'error': 'No files were converted successfully'}
+    
+    return {
+        'success': True,
+        'files': converted_files,
+        'errors': errors,
+        'skipped': skipped,
+        'is_batch': len(converted_files) > 1
+    }
+
+def upload_form():
     cleanup_old_files()
     
     if 'files' not in request.files:
@@ -78,6 +173,8 @@ def upload_file():
         try:
             # Reset file pointer
             file.stream.seek(0)
+            original_size = len(file.read())
+            file.stream.seek(0)
             
             # Validate image
             img = Image.open(file.stream)
@@ -87,21 +184,36 @@ def upload_file():
             file.stream.seek(0)
             img = Image.open(file.stream)
             
-            # Convert to RGB if necessary
-            if img.mode in ('RGBA', 'LA', 'P'):
-                img = img.convert('RGB')
+            # Convert to RGB only for non-transparent formats
+            if img.mode in ('LA', 'P'):
+                if 'transparency' in img.info:
+                    img = img.convert('RGBA')
+                else:
+                    img = img.convert('RGB')
+            # Keep RGBA for transparent PNGs
             
-            # Generate unique filename to avoid conflicts
+            # Keep original filename, just change extension
             base_name = filename.rsplit('.', 1)[0]
-            unique_id = str(uuid.uuid4())[:8]
-            avif_filename = f"{base_name}_{unique_id}.avif"
+            avif_filename = f"{base_name}.avif"
             
             # Ensure converted folder exists
             os.makedirs(CONVERTED_FOLDER, exist_ok=True)
             avif_path = os.path.join(CONVERTED_FOLDER, avif_filename)
             
-            img.save(avif_path, 'AVIF', lossless=True, quality=100)
-            converted_files.append((avif_path, avif_filename, filename))
+            img.save(avif_path, 'AVIF', lossless=True)
+            
+            # Get converted file size
+            converted_size = os.path.getsize(avif_path)
+            savings_percent = ((original_size - converted_size) / original_size) * 100
+            
+            converted_files.append({
+                'path': avif_path,
+                'filename': avif_filename,
+                'original_name': filename,
+                'original_size': original_size,
+                'converted_size': converted_size,
+                'savings_percent': savings_percent
+            })
             
         except Exception as e:
             errors.append(f"{file.filename}: {str(e)}")
@@ -120,22 +232,36 @@ def upload_file():
         flash('No files were converted successfully')
         return redirect(url_for('index'))
     
-    if len(converted_files) == 1:
-        flash(f'Successfully converted 1 file to AVIF (lossless)!')
-        return send_file(converted_files[0][0], as_attachment=True, download_name=converted_files[0][1])
-    
-    # Create zip for multiple files with unique name
+    # Show results on the same page (fallback for non-JS)
+    return render_template('index.html', 
+                         results={
+                             'files': converted_files,
+                             'errors': errors,
+                             'skipped': skipped,
+                             'is_batch': len(converted_files) > 1
+                         })
+
+@app.route('/download/<filename>')
+def download_file(filename):
+    file_path = os.path.join(CONVERTED_FOLDER, filename)
+    if os.path.exists(file_path):
+        return send_file(file_path, as_attachment=True, download_name=filename)
+    return redirect(url_for('index'))
+
+@app.route('/download_batch')
+def download_batch():
+    # Create zip for batch download
     zip_filename = f'converted_images_{str(uuid.uuid4())[:8]}.zip'
     zip_path = os.path.join(CONVERTED_FOLDER, zip_filename)
     
+    # Get all AVIF files from converted folder
     try:
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for file_path, avif_filename, original_name in converted_files:
-                # Use original name structure in zip
-                zip_entry_name = original_name.rsplit('.', 1)[0] + '.avif'
-                zipf.write(file_path, zip_entry_name)
+            for filename in os.listdir(CONVERTED_FOLDER):
+                if filename.endswith('.avif'):
+                    file_path = os.path.join(CONVERTED_FOLDER, filename)
+                    zipf.write(file_path, filename)
         
-        flash(f'Successfully converted {len(converted_files)} files to AVIF (lossless)!')
         return send_file(zip_path, as_attachment=True, download_name=zip_filename)
         
     except Exception as e:
@@ -146,6 +272,19 @@ def upload_file():
 def too_large(e):
     flash('File too large. Maximum size is 100MB total.')
     return redirect(url_for('index'))
+
+def format_file_size(size_bytes):
+    """Format file size in human readable format"""
+    if size_bytes == 0:
+        return "0 B"
+    size_names = ["B", "KB", "MB", "GB"]
+    i = int(math.floor(math.log(size_bytes, 1024)))
+    p = math.pow(1024, i)
+    s = round(size_bytes / p, 2)
+    return f"{s} {size_names[i]}"
+
+# Make format_file_size available in templates
+app.jinja_env.globals.update(format_file_size=format_file_size)
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=8080)

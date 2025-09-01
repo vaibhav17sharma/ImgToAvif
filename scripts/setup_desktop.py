@@ -24,7 +24,7 @@ def create_windows_shortcut():
         raise Exception("Could not find Desktop folder")
     
     shortcut_path = os.path.join(desktop, "AVIF Converter.lnk")
-    target = os.path.join(os.getcwd(), "run.bat")
+    target = os.path.join(os.getcwd(), "scripts", "run.bat")
     
     print(f"Creating shortcut at: {shortcut_path}")
     print(f"Target: {target}")
@@ -65,7 +65,7 @@ def create_mac_shortcut():
     path = os.path.join(desktop, app_name)
     
     script_content = f"""#!/bin/bash
-cd "{os.getcwd()}"
+cd "{os.path.join(os.getcwd(), 'scripts')}"
 ./run.sh
 """
     
@@ -85,7 +85,7 @@ Version=1.0
 Type=Application
 Name=AVIF Converter
 Comment=Convert images to AVIF format
-Exec=bash -c "cd '{os.getcwd()}' && ./run.sh"
+Exec=bash -c "cd '{os.path.join(os.getcwd(), 'scripts')}' && ./run.sh"
 Icon=applications-graphics
 Terminal=true
 Categories=Graphics;Photography;

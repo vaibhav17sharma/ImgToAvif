@@ -1,4 +1,5 @@
 @echo off
+cd ..
 echo PNG/JPG to AVIF Converter
 echo ==============================
 
@@ -7,6 +8,7 @@ python --version >nul 2>&1
 if %errorlevel% == 0 (
     echo Found Python, starting converter...
     python converter.py
+cd scripts
     goto end
 )
 
@@ -14,6 +16,7 @@ python3 --version >nul 2>&1
 if %errorlevel% == 0 (
     echo Found Python3, starting converter...
     python3 converter.py
+cd scripts
     goto end
 )
 
@@ -21,6 +24,7 @@ py --version >nul 2>&1
 if %errorlevel% == 0 (
     echo Found Python via py launcher, starting converter...
     py converter.py
+cd scripts
     goto end
 )
 

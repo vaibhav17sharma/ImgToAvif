@@ -1,4 +1,5 @@
 #!/bin/bash
+cd ..
 echo "PNG/JPG to AVIF Converter"
 echo "=============================="
 
