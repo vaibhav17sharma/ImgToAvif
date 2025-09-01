@@ -4,14 +4,15 @@ A portable web-based image converter that converts PNG, JPG, and JPEG files to A
 
 ## Quick Start
 
-### Windows
-Double-click `run.bat`
+### One-Time Desktop Setup (Recommended)
+**Windows:** Double-click `setup_desktop.bat`  
+**Mac/Linux:** Double-click `setup_desktop.sh`
 
-### Mac/Linux
-Double-click `run.sh` or run in terminal:
-```bash
-./run.sh
-```
+This creates a desktop icon you can click anytime!
+
+### Direct Run (Alternative)
+**Windows:** Double-click `run.bat`  
+**Mac/Linux:** Double-click `run.sh`
 
 ### Manual (if you have Python)
 ```bash
@@ -42,13 +43,16 @@ python converter.py
 ## Sharing
 
 To share with others, provide these files:
+- `setup_desktop.bat` (Windows setup)
+- `setup_desktop.sh` (Mac/Linux setup)
+- `setup_desktop.py` (Desktop installer)
 - `run.bat` (Windows)
 - `run.sh` (Mac/Linux)  
 - `converter.py`
 - `app.py`
 - `templates/index.html`
 
-**Recipients:** Just double-click the appropriate run file for your system!
+**Recipients:** Double-click `setup_desktop.bat` (Windows) or `setup_desktop.sh` (Mac/Linux) for one-time setup, then use the desktop icon!
 
 ## Troubleshooting
 
