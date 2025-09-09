@@ -4,20 +4,21 @@ A modern web-based image converter that converts PNG, JPG, and JPEG files to AVI
 
 ## Quick Start
 
-### One-Time Desktop Setup (Recommended)
+### Docker (Recommended)
+**Windows:** Double-click `scripts/docker_run.bat`  
+**Mac/Linux:** Double-click `scripts/docker_run.sh`  
+**Manual:** `docker-compose up --build`
+
+Access at http://localhost:8080
+
+### One-Time Desktop Setup
 **Windows:** Double-click `scripts/setup_desktop.bat`  
 **Mac/Linux:** Double-click `scripts/setup_desktop.sh`
 
-This creates a desktop icon you can click anytime!
-
-### Direct Run (Alternative)
+### Direct Run (Python)
 **Windows:** Double-click `scripts/run.bat`  
-**Mac/Linux:** Double-click `scripts/run.sh`
-
-### Manual (if you have Python)
-```bash
-python converter.py
-```
+**Mac/Linux:** Double-click `scripts/run.sh`  
+**Manual:** `python converter.py`
 
 ## Project Structure
 
@@ -39,9 +40,8 @@ ImgToAvif/
 │   └── index.html     # Main interface
 ├── utils/             # Utility scripts
 │   └── convert.py     # Simple CLI converter
-├── docs/              # Documentation
-│   ├── README.md      # Detailed documentation
-│   └── Dockerfile     # Container setup
+├── Dockerfile         # Docker container setup
+├── docker-compose.yml # Docker Compose configuration
 └── converted/         # Output directory (auto-created)
 ```
 
@@ -55,9 +55,16 @@ ImgToAvif/
 - Drag & drop interface
 - Cross-platform support (Windows/Mac/Linux)
 - Single Page Application (SPA) experience
+- Automatic browser opening
+- Auto-detects Python installation
 
 ## System Requirements
 
+### Docker (Recommended)
+- Docker and Docker Compose
+- No Python installation needed
+
+### Python Method
 - Python 3.7+ (auto-detected, installation guidance provided)
 - Internet connection (for initial dependency installation)
 
@@ -65,7 +72,16 @@ ImgToAvif/
 
 To share with others, provide the entire project folder.
 
-**Recipients:** Double-click `scripts/setup_desktop.bat` (Windows) or `scripts/setup_desktop.sh` (Mac/Linux) for one-time setup, then use the desktop icon!
+**Recipients:** 
+- **Docker:** Double-click `scripts/docker_run.bat` (Windows) or `scripts/docker_run.sh` (Mac/Linux)
+- **Python:** Double-click `scripts/setup_desktop.bat` (Windows) or `scripts/setup_desktop.sh` (Mac/Linux) for one-time setup
+
+## How It Works
+
+1. **Auto-detects Python** - Tries `python`, `python3`, and `py` commands
+2. **Installs dependencies** - Automatically installs Flask, Pillow, and pillow-avif-plugin
+3. **Starts web server** - Runs on localhost:8080
+4. **Opens browser** - Automatically opens the converter interface
 
 ## Development
 

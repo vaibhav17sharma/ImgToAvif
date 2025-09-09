@@ -1,6 +1,25 @@
-venv/
-converted/
+# Python
 __pycache__/
 *.pyc
-.DS_Store
+*.pyo
+*.pyd
+venv/
+env/
+.env
+
+# Application
+converted/
 images/
+
+# System
+.DS_Store
+Thumbs.db
+
+# Docker
+.dockerignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
