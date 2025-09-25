@@ -1,6 +1,7 @@
 from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session
 from PIL import Image
 import pillow_avif
+import pillow_heif
 import os
 import io
 import zipfile
@@ -8,6 +9,9 @@ import uuid
 import tempfile
 import math
 from werkzeug.utils import secure_filename
+
+# Register HEIF opener
+pillow_heif.register_heif_opener()
 
 app = Flask(__name__)
 app.secret_key = 'your-secret-key-change-this'
@@ -18,11 +22,15 @@ CONVERTED_FOLDER = 'converted'
 # Create directories if they don't exist
 os.makedirs(CONVERTED_FOLDER, exist_ok=True)
 
-def allowed_file(filename):
+def allowed_file(filename, mode='avif'):
     if not filename or '.' not in filename:
         return False
     ext = filename.rsplit('.', 1)[1].lower()
-    return ext in ['png', 'jpg', 'jpeg']
+    if mode == 'avif':
+        return ext in ['png', 'jpg', 'jpeg']
+    elif mode == 'png':
+        return ext in ['heic', 'heif']
+    return False
 
 def cleanup_old_files():
     """Clean up files older than 10 minutes"""
@@ -56,6 +64,8 @@ def upload_ajax():
     cleanup_old_files()
     
     files = request.files.getlist('files')
+    mode = request.form.get('mode', 'avif')
+    
     if not files or all(f.filename == '' for f in files):
         return {'success': False, 'error': 'No files selected'}
     
@@ -70,7 +80,7 @@ def upload_ajax():
         if not file or not file.filename:
             continue
             
-        if not allowed_file(file.filename):
+        if not allowed_file(file.filename, mode):
             skipped.append(file.filename)
             continue
             
@@ -93,30 +103,39 @@ def upload_ajax():
             file.stream.seek(0)
             img = Image.open(file.stream)
             
-            # Convert to RGB only for non-transparent formats
-            if img.mode in ('LA', 'P'):
-                if 'transparency' in img.info:
-                    img = img.convert('RGBA')
-                else:
-                    img = img.convert('RGB')
-            # Keep RGBA for transparent PNGs
-            
-            # Keep original filename, just change extension
+            # Convert based on mode
             base_name = filename.rsplit('.', 1)[0]
-            avif_filename = f"{base_name}.avif"
+            
+            if mode == 'avif':
+                # Convert to RGB only for non-transparent formats
+                if img.mode in ('LA', 'P'):
+                    if 'transparency' in img.info:
+                        img = img.convert('RGBA')
+                    else:
+                        img = img.convert('RGB')
+                
+                output_filename = f"{base_name}.avif"
+                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                img.save(output_path, 'AVIF', lossless=True)
+                
+            elif mode == 'png':
+                # Convert HEIC to PNG
+                if img.mode not in ('RGB', 'RGBA'):
+                    img = img.convert('RGB')
+                
+                output_filename = f"{base_name}.png"
+                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                img.save(output_path, 'PNG')
             
             # Ensure converted folder exists
             os.makedirs(CONVERTED_FOLDER, exist_ok=True)
-            avif_path = os.path.join(CONVERTED_FOLDER, avif_filename)
-            
-            img.save(avif_path, 'AVIF', lossless=True)
             
             # Get converted file size
-            converted_size = os.path.getsize(avif_path)
+            converted_size = os.path.getsize(output_path)
             savings_percent = ((original_size - converted_size) / original_size) * 100
             
             converted_files.append({
-                'filename': avif_filename,
+                'filename': output_filename,
                 'original_name': filename,
                 'original_size': original_size,
                 'converted_size': converted_size,
@@ -134,11 +153,14 @@ def upload_ajax():
         'files': converted_files,
         'errors': errors,
         'skipped': skipped,
-        'is_batch': len(converted_files) > 1
+        'is_batch': len(converted_files) > 1,
+        'mode': mode
     }
 
 def upload_form():
     cleanup_old_files()
+    
+    mode = request.form.get('mode', 'avif')
     
     if 'files' not in request.files:
         flash('No files selected')
@@ -161,7 +183,7 @@ def upload_form():
         if not file or not file.filename:
             continue
             
-        if not allowed_file(file.filename):
+        if not allowed_file(file.filename, mode):
             skipped.append(file.filename)
             continue
             
@@ -184,31 +206,40 @@ def upload_form():
             file.stream.seek(0)
             img = Image.open(file.stream)
             
-            # Convert to RGB only for non-transparent formats
-            if img.mode in ('LA', 'P'):
-                if 'transparency' in img.info:
-                    img = img.convert('RGBA')
-                else:
-                    img = img.convert('RGB')
-            # Keep RGBA for transparent PNGs
-            
-            # Keep original filename, just change extension
+            # Convert based on mode
             base_name = filename.rsplit('.', 1)[0]
-            avif_filename = f"{base_name}.avif"
+            
+            if mode == 'avif':
+                # Convert to RGB only for non-transparent formats
+                if img.mode in ('LA', 'P'):
+                    if 'transparency' in img.info:
+                        img = img.convert('RGBA')
+                    else:
+                        img = img.convert('RGB')
+                
+                output_filename = f"{base_name}.avif"
+                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                img.save(output_path, 'AVIF', lossless=True)
+                
+            elif mode == 'png':
+                # Convert HEIC to PNG
+                if img.mode not in ('RGB', 'RGBA'):
+                    img = img.convert('RGB')
+                
+                output_filename = f"{base_name}.png"
+                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                img.save(output_path, 'PNG')
             
             # Ensure converted folder exists
             os.makedirs(CONVERTED_FOLDER, exist_ok=True)
-            avif_path = os.path.join(CONVERTED_FOLDER, avif_filename)
-            
-            img.save(avif_path, 'AVIF', lossless=True)
             
             # Get converted file size
-            converted_size = os.path.getsize(avif_path)
+            converted_size = os.path.getsize(output_path)
             savings_percent = ((original_size - converted_size) / original_size) * 100
             
             converted_files.append({
-                'path': avif_path,
-                'filename': avif_filename,
+                'path': output_path,
+                'filename': output_filename,
                 'original_name': filename,
                 'original_size': original_size,
                 'converted_size': converted_size,
@@ -238,7 +269,8 @@ def upload_form():
                              'files': converted_files,
                              'errors': errors,
                              'skipped': skipped,
-                             'is_batch': len(converted_files) > 1
+                             'is_batch': len(converted_files) > 1,
+                             'mode': mode
                          })
 
 @app.route('/download/<filename>')

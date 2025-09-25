@@ -3,7 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AVIF Converter</title>
+    <title>Image Converter</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 </head>
 <body>
@@ -12,8 +15,15 @@
     </div>
     
     <div class="container">
-        <h1>AVIF Converter</h1>
-        <p class="subtitle">Convert images to modern AVIF format</p>
+        <h1 id="pageTitle">AVIF Converter</h1>
+        <p class="subtitle" id="pageSubtitle">Convert images to modern AVIF format</p>
+        
+        <div class="mode-switcher">
+            <input type="radio" id="avifMode" name="mode" value="avif" checked>
+            <label for="avifMode">To AVIF</label>
+            <input type="radio" id="pngMode" name="mode" value="png">
+            <label for="pngMode">HEIC to PNG</label>
+        </div>
         
         {% with messages = get_flashed_messages() %}
             {% if messages %}
@@ -28,10 +38,11 @@
         {% endwith %}
         
         <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
+            <input type="hidden" name="mode" id="modeInput" value="avif">
             <div class="upload-area" id="uploadArea">
                 <div class="upload-icon">📁</div>
-                <div class="upload-text">Drag & drop images here</div>
-                <div class="upload-hint">or click to browse</div>
+                <div class="upload-text" id="uploadText">Drag & drop images here</div>
+                <div class="upload-hint" id="uploadHint">or click to browse</div>
                 <input type="file" name="files" accept=".png,.jpg,.jpeg" multiple required id="fileInput">
             </div>
             <div class="file-count" id="fileCount"></div>

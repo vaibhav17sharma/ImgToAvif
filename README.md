@@ -1,6 +1,8 @@
-# AVIF Converter
+# Image Converter
 
-A modern web-based image converter that converts PNG, JPG, and JPEG files to AVIF format with lossless compression.
+A modern web-based image converter with dual modes:
+- **To AVIF**: Convert PNG, JPG, and JPEG files to AVIF format with lossless compression
+- **HEIC to PNG**: Convert HEIC/HEIF files to PNG format
 
 ## Quick Start
 
@@ -47,7 +49,9 @@ ImgToAvif/
 
 ## Features
 
-- Convert PNG, JPG, JPEG to AVIF (lossless)
+- **Dual Mode Converter**: Switch between AVIF and HEIC to PNG conversion
+- **To AVIF Mode**: Convert PNG, JPG, JPEG to AVIF (lossless)
+- **HEIC to PNG Mode**: Convert HEIC/HEIF files to PNG format
 - Batch conversion (up to 50 files, 100MB total)
 - Image previews for input and output files
 - Real-time file size comparison and savings
@@ -79,14 +83,14 @@ To share with others, provide the entire project folder.
 ## How It Works
 
 1. **Auto-detects Python** - Tries `python`, `python3`, and `py` commands
-2. **Installs dependencies** - Automatically installs Flask, Pillow, and pillow-avif-plugin
+2. **Installs dependencies** - Automatically installs Flask, Pillow, pillow-avif-plugin, and pillow-heif
 3. **Starts web server** - Runs on localhost:8080
 4. **Opens browser** - Automatically opens the converter interface
 
 ## Development
 
-- **Flask Backend:** `app.py` - Handles file upload, conversion, and API
-- **Frontend:** `static/` - Modern CSS and JavaScript
+- **Flask Backend:** `app.py` - Handles file upload, dual-mode conversion, and API
+- **Frontend:** `static/` - Modern CSS and JavaScript with mode switcher
 - **Templates:** `templates/` - Jinja2 HTML templates
 - **Entry Point:** `converter.py` - Auto-setup and server launcher
 
@@ -98,6 +102,6 @@ If you get permission errors:
 
 If dependencies fail to install:
 ```bash
-pip install Flask Pillow pillow-avif-plugin
+pip install Flask Pillow pillow-avif-plugin pillow-heif
 python converter.py
 ```

@@ -24,7 +24,7 @@ def setup_venv_and_install():
         python_exe = os.path.join(venv_path, 'bin', 'python')
         pip_exe = os.path.join(venv_path, 'bin', 'pip')
     
-    requirements = ['Flask', 'Pillow', 'pillow-avif-plugin']
+    requirements = ['Flask', 'Pillow', 'pillow-avif-plugin', 'pillow-heif']
     
     print("Installing dependencies in virtual environment...")
     for req in requirements:
@@ -39,7 +39,7 @@ def setup_venv_and_install():
 
 def install_requirements():
     """Install required packages (Windows fallback)"""
-    requirements = ['Flask', 'Pillow', 'pillow-avif-plugin']
+    requirements = ['Flask', 'Pillow', 'pillow-avif-plugin', 'pillow-heif']
     
     print("Installing dependencies...")
     for req in requirements:
@@ -70,7 +70,7 @@ def cleanup_files():
         cleanup_old_files()
 
 def main():
-    print("PNG/JPG to AVIF Converter")
+    print("Image Converter - AVIF & HEIC to PNG")
     print("=" * 30)
     print(f"Running on {platform.system()} {platform.release()}")
     print()
@@ -80,6 +80,7 @@ def main():
         import flask
         import PIL
         import pillow_avif
+        import pillow_heif
     except ImportError:
         print("Installing required packages...")
         
@@ -90,7 +91,7 @@ def main():
                 print("Failed to setup environment. Please run manually:")
                 print("python3 -m venv venv")
                 print("source venv/bin/activate")
-                print("pip install Flask Pillow pillow-avif-plugin")
+                print("pip install Flask Pillow pillow-avif-plugin pillow-heif")
                 input("Press Enter to exit...")
                 return
             
@@ -102,7 +103,7 @@ def main():
             # Windows - direct install
             if not install_requirements():
                 print("Failed to install packages. Please run manually:")
-                print("pip install Flask Pillow pillow-avif-plugin")
+                print("pip install Flask Pillow pillow-avif-plugin pillow-heif")
                 input("Press Enter to exit...")
                 return
     
