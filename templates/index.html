@@ -141,7 +141,7 @@
                 {% else %}
                     <a href="{{ url_for('download_file', filename=results.files[0].filename) }}" class="download-btn">⬇️ Download {{ results.files[0].filename }}</a>
                 {% endif %}
-                <a href="{{ url_for('index') }}" class="download-btn back-btn">🔄 Convert More Files</a>
+                <button onclick="clearFilesAndReload()" class="download-btn back-btn">🔄 Convert More Files</button>
             </div>
             
             {% if results.errors %}

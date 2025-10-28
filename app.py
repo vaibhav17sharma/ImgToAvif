@@ -330,6 +330,16 @@ def download_batch():
         flash(f'Error creating zip file: {str(e)}')
         return redirect(url_for('index'))
 
+@app.route('/clear_files', methods=['POST'])
+def clear_files():
+    try:
+        for filename in os.listdir(CONVERTED_FOLDER):
+            if not filename.startswith('.'):
+                os.remove(os.path.join(CONVERTED_FOLDER, filename))
+        return {'success': True}
+    except:
+        return {'success': False}
+
 @app.errorhandler(413)
 def too_large(e):
     flash('File too large. Maximum size is 100MB total.')

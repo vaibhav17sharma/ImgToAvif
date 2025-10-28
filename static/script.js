@@ -230,7 +230,7 @@ function showResults(results) {
                     '<a href="/download_batch" class="download-btn">📦 Download All as ZIP</a>' :
                     `<a href="/download/${results.files[0].filename}" class="download-btn">⬇️ Download ${results.files[0].filename}</a>`
                 }
-                <button onclick="location.reload()" class="download-btn back-btn">🔄 Convert More Files</button>
+                <button onclick="clearFilesAndReload()" class="download-btn back-btn">🔄 Convert More Files</button>
             </div>
             
             ${results.errors && results.errors.length > 0 ? `
@@ -301,3 +301,10 @@ window.addEventListener('load', () => {
         }
     }, 5000);
 });
+
+// Clear files and reload
+function clearFilesAndReload() {
+    fetch('/clear_files', { method: 'POST' })
+        .then(() => location.reload())
+        .catch(() => location.reload());
+}
