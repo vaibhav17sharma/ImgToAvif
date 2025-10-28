@@ -30,6 +30,8 @@ def allowed_file(filename, mode='avif'):
         return ext in ['png', 'jpg', 'jpeg']
     elif mode == 'png':
         return ext in ['heic', 'heif']
+    elif mode == 'compress':
+        return ext in ['png', 'jpg', 'jpeg']
     return False
 
 def cleanup_old_files():
@@ -126,6 +128,20 @@ def upload_ajax():
                 output_filename = f"{base_name}.png"
                 output_path = os.path.join(CONVERTED_FOLDER, output_filename)
                 img.save(output_path, 'PNG')
+                
+            elif mode == 'compress':
+                # Lossless compression for same format
+                original_ext = filename.rsplit('.', 1)[1].lower()
+                if original_ext in ['jpg', 'jpeg']:
+                    if img.mode in ('RGBA', 'LA'):
+                        img = img.convert('RGB')
+                    output_filename = f"{base_name}.jpg"
+                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    img.save(output_path, 'JPEG', quality=95, optimize=True)
+                else:  # PNG
+                    output_filename = f"{base_name}.png"
+                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    img.save(output_path, 'PNG', optimize=True)
             
             # Ensure converted folder exists
             os.makedirs(CONVERTED_FOLDER, exist_ok=True)
@@ -229,6 +245,20 @@ def upload_form():
                 output_filename = f"{base_name}.png"
                 output_path = os.path.join(CONVERTED_FOLDER, output_filename)
                 img.save(output_path, 'PNG')
+                
+            elif mode == 'compress':
+                # Lossless compression for same format
+                original_ext = filename.rsplit('.', 1)[1].lower()
+                if original_ext in ['jpg', 'jpeg']:
+                    if img.mode in ('RGBA', 'LA'):
+                        img = img.convert('RGB')
+                    output_filename = f"{base_name}.jpg"
+                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    img.save(output_path, 'JPEG', quality=95, optimize=True)
+                else:  # PNG
+                    output_filename = f"{base_name}.png"
+                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    img.save(output_path, 'PNG', optimize=True)
             
             # Ensure converted folder exists
             os.makedirs(CONVERTED_FOLDER, exist_ok=True)
@@ -286,11 +316,11 @@ def download_batch():
     zip_filename = f'converted_images_{str(uuid.uuid4())[:8]}.zip'
     zip_path = os.path.join(CONVERTED_FOLDER, zip_filename)
     
-    # Get all AVIF files from converted folder
+    # Get all converted files from converted folder
     try:
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
             for filename in os.listdir(CONVERTED_FOLDER):
-                if filename.endswith('.avif'):
+                if filename.endswith(('.avif', '.png', '.jpg', '.jpeg')):
                     file_path = os.path.join(CONVERTED_FOLDER, filename)
                     zipf.write(file_path, filename)
         

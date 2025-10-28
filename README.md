@@ -1,8 +1,9 @@
 # Image Converter
 
-A modern web-based image converter with dual modes:
+A modern web-based image converter with three modes:
 - **To AVIF**: Convert PNG, JPG, and JPEG files to AVIF format with lossless compression
 - **HEIC to PNG**: Convert HEIC/HEIF files to PNG format
+- **Compress**: Lossless compression for PNG and JPG files without format change
 
 ## Quick Start
 
@@ -49,9 +50,10 @@ ImgToAvif/
 
 ## Features
 
-- **Dual Mode Converter**: Switch between AVIF and HEIC to PNG conversion
+- **Triple Mode Converter**: Switch between AVIF, HEIC to PNG, and compression modes
 - **To AVIF Mode**: Convert PNG, JPG, JPEG to AVIF (lossless)
 - **HEIC to PNG Mode**: Convert HEIC/HEIF files to PNG format
+- **Compress Mode**: Lossless compression for PNG and JPG files
 - Batch conversion (up to 50 files, 100MB total)
 - Image previews for input and output files
 - Real-time file size comparison and savings

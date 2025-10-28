@@ -18,13 +18,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('uploadHint').textContent = 'or click to browse';
                 fileInput.accept = '.png,.jpg,.jpeg';
                 convertBtn.textContent = 'Convert to AVIF';
-            } else {
+            } else if (selectedMode === 'png') {
                 document.getElementById('pageTitle').textContent = 'HEIC to PNG Converter';
                 document.getElementById('pageSubtitle').textContent = 'Convert HEIC images to PNG format';
                 document.getElementById('uploadText').textContent = 'Drag & drop HEIC files here';
                 document.getElementById('uploadHint').textContent = 'or click to browse';
                 fileInput.accept = '.heic,.heif';
                 convertBtn.textContent = 'Convert to PNG';
+            } else {
+                document.getElementById('pageTitle').textContent = 'Image Compressor';
+                document.getElementById('pageSubtitle').textContent = 'Lossless compression for PNG and JPG files';
+                document.getElementById('uploadText').textContent = 'Drag & drop images here';
+                document.getElementById('uploadHint').textContent = 'or click to browse';
+                fileInput.accept = '.png,.jpg,.jpeg';
+                convertBtn.textContent = 'Compress Images';
             }
             
             fileInput.value = '';
@@ -122,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
         e.preventDefault();
         
         const mode = document.querySelector('input[name="mode"]:checked').value;
-        convertBtn.textContent = mode === 'avif' ? 'Converting to AVIF...' : 'Converting to PNG...';
+        convertBtn.textContent = mode === 'avif' ? 'Converting to AVIF...' : mode === 'png' ? 'Converting to PNG...' : 'Compressing...';
         convertBtn.disabled = true;
         
         // Clear any existing flash messages
@@ -158,7 +165,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         
         const mode2 = document.querySelector('input[name="mode"]:checked').value;
-        convertBtn.textContent = mode2 === 'avif' ? 'Convert to AVIF' : 'Convert to PNG';
+        convertBtn.textContent = mode2 === 'avif' ? 'Convert to AVIF' : mode2 === 'png' ? 'Convert to PNG' : 'Compress Images';
         convertBtn.disabled = false;
     });
 });
@@ -180,11 +187,11 @@ function showResults(results) {
                 <div class="summary-stats">
                     <div class="stat">
                         <div class="stat-number">${results.files.length > 0 ? (results.files.reduce((sum, f) => sum + (isNaN(f.savings_percent) ? 0 : f.savings_percent), 0) / results.files.length).toFixed(1) : 0}%</div>
-                        <div class="stat-label">${results.mode === 'avif' ? 'Average Savings' : 'Size Change'}</div>
+                        <div class="stat-label">${results.mode === 'png' ? 'Size Change' : 'Average Savings'}</div>
                     </div>
                     <div class="stat">
                         <div class="stat-number">${formatFileSize2(Math.abs(results.files.reduce((sum, f) => sum + (f.original_size - f.converted_size), 0)))}</div>
-                        <div class="stat-label">${results.mode === 'avif' ? 'Total Saved' : 'Size Difference'}</div>
+                        <div class="stat-label">${results.mode === 'png' ? 'Size Difference' : 'Total Saved'}</div>
                     </div>
                 </div>
             </div>
@@ -204,7 +211,7 @@ function showResults(results) {
                                 <div class="size-value">${formatFileSize2(file.original_size)}</div>
                             </div>
                             <div class="size-info">
-                                <div class="size-label">${results.mode === 'avif' ? 'AVIF' : 'PNG'}</div>
+                                <div class="size-label">${results.mode === 'avif' ? 'AVIF' : results.mode === 'png' ? 'PNG' : 'Compressed'}</div>
                                 <div class="size-value">${formatFileSize2(file.converted_size)}</div>
                             </div>
                         </div>
