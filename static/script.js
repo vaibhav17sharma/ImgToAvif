@@ -168,17 +168,33 @@ document.addEventListener('DOMContentLoaded', function() {
         convertBtn.textContent = mode2 === 'avif' ? 'Convert to AVIF' : mode2 === 'png' ? 'Convert to PNG' : 'Compress Images';
         convertBtn.disabled = false;
     });
+
+    // Start timer if it exists (for server-rendered results)
+    if (document.getElementById('cleanupTimer')) {
+        startCleanupTimer();
+    }
 });
 
 function showResults(results) {
+    // Remove existing results if any
+    const existingResults = document.querySelector('.results-section');
+    if (existingResults) {
+        existingResults.remove();
+    }
+
     // Hide upload section
     document.querySelector('form').style.display = 'none';
-    document.querySelector('.features').style.display = 'none';
-    document.querySelector('.stats').style.display = 'none';
+    const features = document.querySelector('.features');
+    if (features) features.style.display = 'none';
+    const stats = document.querySelector('.stats');
+    if (stats) stats.style.display = 'none';
+
+    // Store current batch ID for cleanup
+    window.currentBatchId = results.batch_id;
     
     // Show results
     const resultsHTML = `
-        <div class="results-section">
+        <div class="results-section" data-batch-id="${results.batch_id}">
             <div class="success-icon">🎉</div>
             <h2>Conversion Complete!</h2>
             
@@ -190,7 +206,7 @@ function showResults(results) {
                         <div class="stat-label">${results.mode === 'png' ? 'Size Change' : 'Average Savings'}</div>
                     </div>
                     <div class="stat">
-                        <div class="stat-number">${formatFileSize2(Math.abs(results.files.reduce((sum, f) => sum + (f.original_size - f.converted_size), 0)))}</div>
+                        <div class="stat-number">${formatFileSize2(results.files.reduce((sum, f) => sum + (f.original_size - f.converted_size), 0))}</div>
                         <div class="stat-label">${results.mode === 'png' ? 'Size Difference' : 'Total Saved'}</div>
                     </div>
                 </div>
@@ -203,7 +219,7 @@ function showResults(results) {
             <div class="files-grid">
                 ${results.files.map(file => `
                     <div class="file-card">
-                        <img src="/download/${file.filename}" class="result-preview-img" alt="${file.filename}">
+                        <img src="/download/${results.batch_id}/${file.filename}" class="result-preview-img" alt="${file.filename}">
                         <div class="file-name">${file.filename}</div>
                         <div class="file-sizes">
                             <div class="size-info">
@@ -227,8 +243,8 @@ function showResults(results) {
             
             <div class="download-section">
                 ${results.is_batch ? 
-                    '<a href="/download_batch" class="download-btn">📦 Download All as ZIP</a>' :
-                    `<a href="/download/${results.files[0].filename}" class="download-btn">⬇️ Download ${results.files[0].filename}</a>`
+                    `<a href="/download_batch/${results.batch_id}" class="download-btn">📦 Download All as ZIP</a>` :
+                    `<a href="/download/${results.batch_id}/${results.files[0].filename}?download=1" class="download-btn">⬇️ Download ${results.files[0].filename}</a>`
                 }
                 <button onclick="clearFilesAndReload()" class="download-btn back-btn">🔄 Convert More Files</button>
             </div>
@@ -250,10 +266,12 @@ function showResults(results) {
 
 function formatFileSize2(bytes) {
     if (bytes === 0) return '0 Bytes';
+    const prefix = bytes < 0 ? '-' : '';
+    bytes = Math.abs(bytes);
     const k = 1024;
     const sizes = ['Bytes', 'KB', 'MB', 'GB'];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    return prefix + parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
 function showError(message) {
@@ -269,6 +287,7 @@ function showError(message) {
 function startCleanupTimer() {
     let timeLeft = 600; // 10 minutes in seconds
     const timerElement = document.getElementById('cleanupTimer');
+    const batchId = window.currentBatchId || (document.querySelector('.results-section') ? document.querySelector('.results-section').dataset.batchId : null);
     
     const timer = setInterval(() => {
         const minutes = Math.floor(timeLeft / 60);
@@ -280,13 +299,23 @@ function startCleanupTimer() {
             timerElement.textContent = 'Files deleted';
             timerElement.parentElement.style.background = 'rgba(220, 53, 69, 0.1)';
             timerElement.parentElement.style.borderColor = '#dc3545';
+            
+            // Actually trigger deletion on the server for THIS batch only
+            if (batchId) {
+                fetch(`/clear_files/${batchId}`, { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            console.log('Files successfully deleted from server');
+                        }
+                    })
+                    .catch(err => console.error('Error deleting files:', err));
+            }
         }
         
         timeLeft--;
     }, 1000);
 }
-
-
 
 // Clear flash messages on page load after 5 seconds
 window.addEventListener('load', () => {
@@ -299,12 +328,16 @@ window.addEventListener('load', () => {
                 flashMessages.style.display = 'none';
             }, 500);
         }
-    }, 5000);
+    }, 50000);
 });
 
 // Clear files and reload
 function clearFilesAndReload() {
-    fetch('/clear_files', { method: 'POST' })
-        .then(() => location.reload())
-        .catch(() => location.reload());
+    const batchId = window.currentBatchId || (document.querySelector('.results-section') ? document.querySelector('.results-section').dataset.batchId : null);
+    if (batchId) {
+        fetch(`/clear_files/${batchId}`, { method: 'POST' })
+            .finally(() => location.reload());
+    } else {
+        location.reload();
+    }
 }

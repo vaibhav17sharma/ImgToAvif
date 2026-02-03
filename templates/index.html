@@ -1,161 +1,210 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Image Converter</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-</head>
-<body>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='style.css') }}"
+    />
+  </head>
+  <body>
     <div class="creator-info">
-        Created with <span class="heart">❤️</span> by <a href="https://vaibdev.com" target="_blank">Vaibhav Sharma</a>
+      Created with <span class="heart">❤️</span> by
+      <a href="https://vaibdev.com" target="_blank">Vaibhav Sharma</a>
     </div>
-    
+
     <div class="container">
-        <h1 id="pageTitle">AVIF Converter</h1>
-        <p class="subtitle" id="pageSubtitle">Convert images to modern AVIF format</p>
-        
-        <div class="mode-switcher">
-            <input type="radio" id="avifMode" name="mode" value="avif" checked>
-            <label for="avifMode">To AVIF</label>
-            <input type="radio" id="pngMode" name="mode" value="png">
-            <label for="pngMode">HEIC to PNG</label>
-            <input type="radio" id="compressMode" name="mode" value="compress">
-            <label for="compressMode">Compress</label>
+      <h1 id="pageTitle">AVIF Converter</h1>
+      <p class="subtitle" id="pageSubtitle">
+        Convert images to modern AVIF format
+      </p>
+
+      <div class="mode-switcher">
+        <input type="radio" id="avifMode" name="mode" value="avif" checked />
+        <label for="avifMode">To AVIF</label>
+        <input type="radio" id="pngMode" name="mode" value="png" />
+        <label for="pngMode">HEIC to PNG</label>
+        <input type="radio" id="compressMode" name="mode" value="compress" />
+        <label for="compressMode">Compress</label>
+      </div>
+
+      {% with messages = get_flashed_messages() %} {% if messages %}
+      <div class="flash-messages">
+        {% for message in messages %}
+        <div
+          class="flash-message {% if 'Error' in message or 'Failed' in message %}error{% else %}success{% endif %}"
+        >
+          {{ message }}
         </div>
-        
-        {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="flash-messages">
-                    {% for message in messages %}
-                        <div class="flash-message {% if 'Error' in message or 'Failed' in message %}error{% else %}success{% endif %}">
-                            {{ message }}
-                        </div>
-                    {% endfor %}
-                </div>
-            {% endif %}
-        {% endwith %}
-        
-        <form action="/upload" method="post" enctype="multipart/form-data" id="uploadForm">
-            <input type="hidden" name="mode" id="modeInput" value="avif">
-            <div class="upload-area" id="uploadArea">
-                <div class="upload-icon">📁</div>
-                <div class="upload-text" id="uploadText">Drag & drop images here</div>
-                <div class="upload-hint" id="uploadHint">or click to browse</div>
-                <input type="file" name="files" accept=".png,.jpg,.jpeg" multiple required id="fileInput">
-            </div>
-            <div class="file-count" id="fileCount"></div>
-            <button type="submit" class="convert-btn" id="convertBtn">Convert to AVIF</button>
-        </form>
-        
-        <div class="file-preview" id="filePreview">
-            <h3>Selected Files:</h3>
-            <div class="file-list" id="fileList"></div>
+        {% endfor %}
+      </div>
+      {% endif %} {% endwith %}
+
+      <form
+        action="/upload"
+        method="post"
+        enctype="multipart/form-data"
+        id="uploadForm"
+      >
+        <input type="hidden" name="mode" id="modeInput" value="avif" />
+        <div class="upload-area" id="uploadArea">
+          <div class="upload-icon">📁</div>
+          <div class="upload-text" id="uploadText">Drag & drop images here</div>
+          <div class="upload-hint" id="uploadHint">or click to browse</div>
+          <input
+            type="file"
+            name="files"
+            accept=".png,.jpg,.jpeg"
+            multiple
+            required
+            id="fileInput"
+          />
         </div>
-        
-        {% if not results %}
-        <div class="features">
-            <div class="feature">
-                <div class="feature-icon">🚀</div>
-                <div class="feature-title">50% Smaller</div>
-                <div class="feature-desc">Better compression than PNG/JPG</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">🎯</div>
-                <div class="feature-title">Lossless</div>
-                <div class="feature-desc">Perfect quality preservation</div>
-            </div>
-            <div class="feature">
-                <div class="feature-icon">⚡</div>
-                <div class="feature-title">Fast</div>
-                <div class="feature-desc">Batch convert up to 50 files</div>
-            </div>
+        <div class="file-count" id="fileCount"></div>
+        <button type="submit" class="convert-btn" id="convertBtn">
+          Convert to AVIF
+        </button>
+      </form>
+
+      <div class="file-preview" id="filePreview">
+        <h3>Selected Files:</h3>
+        <div class="file-list" id="fileList"></div>
+      </div>
+
+      {% if not results %}
+      <div class="features">
+        <div class="feature">
+          <div class="feature-icon">🚀</div>
+          <div class="feature-title">50% Smaller</div>
+          <div class="feature-desc">Better compression than PNG/JPG</div>
         </div>
-        
-        <div class="stats">
+        <div class="feature">
+          <div class="feature-icon">🎯</div>
+          <div class="feature-title">Lossless</div>
+          <div class="feature-desc">Perfect quality preservation</div>
+        </div>
+        <div class="feature">
+          <div class="feature-icon">⚡</div>
+          <div class="feature-title">Fast</div>
+          <div class="feature-desc">Batch convert up to 50 files</div>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat">
+          <div class="stat-number">50</div>
+          <div class="stat-label">Max Files</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">100MB</div>
+          <div class="stat-label">Max Size</div>
+        </div>
+        <div class="stat">
+          <div class="stat-number">3</div>
+          <div class="stat-label">Formats</div>
+        </div>
+      </div>
+      {% endif %} {% if results %}
+      <div class="results-section" data-batch-id="{{ results.batch_id }}">
+        <div class="success-icon">🎉</div>
+        <h2>Conversion Complete!</h2>
+
+        <div class="summary">
+          <div class="summary-title">
+            Successfully converted {{ results.files|length }} file{{ 's' if
+            results.files|length > 1 else '' }}
+          </div>
+          <div class="summary-stats">
             <div class="stat">
-                <div class="stat-number">50</div>
-                <div class="stat-label">Max Files</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">100MB</div>
-                <div class="stat-label">Max Size</div>
-            </div>
-            <div class="stat">
-                <div class="stat-number">3</div>
-                <div class="stat-label">Formats</div>
-            </div>
-        </div>
-        {% endif %}
-        
-        {% if results %}
-        <div class="results-section">
-            <div class="success-icon">🎉</div>
-            <h2>Conversion Complete!</h2>
-            
-            <div class="summary">
-                <div class="summary-title">Successfully converted {{ results.files|length }} file{{ 's' if results.files|length > 1 else '' }}</div>
-                <div class="summary-stats">
-                    <div class="stat">
-                        <div class="stat-number">{{ "%.1f"|format(results.files|sum(attribute='savings_percent')/results.files|length) }}%</div>
-                        <div class="stat-label">Average Savings</div>
-                    </div>
-                    <div class="stat">
-                        <div class="stat-number">{{ format_file_size(results.files|sum(attribute='original_size') - results.files|sum(attribute='converted_size')) }}</div>
-                        <div class="stat-label">Total Saved</div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="files-grid">
-                {% for file in results.files %}
-                <div class="file-card">
-                    <div class="file-name">{{ file.filename }}</div>
-                    <div class="file-sizes">
-                        <div class="size-info">
-                            <div class="size-label">Original</div>
-                            <div class="size-value">{{ format_file_size(file.original_size) }}</div>
-                        </div>
-                        <div class="size-info">
-                            <div class="size-label">AVIF</div>
-                            <div class="size-value">{{ format_file_size(file.converted_size) }}</div>
-                        </div>
-                    </div>
-                    <div class="savings">
-                        {% if file.savings_percent > 0 %}
-                            🎯 {{ "%.1f"|format(file.savings_percent) }}% smaller
-                        {% else %}
-                            📈 {{ "%.1f"|format(-file.savings_percent) }}% larger
-                        {% endif %}
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-            
-            <div class="download-section">
-                {% if results.is_batch %}
-                    <a href="{{ url_for('download_batch') }}" class="download-btn">📦 Download All as ZIP</a>
+              <div class="stat-number">
+                {% if results.files|length > 0 %}
+                  {{ "%.1f"|format(results.files|sum(attribute='savings_percent')/results.files|length) }}%
                 {% else %}
-                    <a href="{{ url_for('download_file', filename=results.files[0].filename) }}" class="download-btn">⬇️ Download {{ results.files[0].filename }}</a>
+                  0%
                 {% endif %}
-                <button onclick="clearFilesAndReload()" class="download-btn back-btn">🔄 Convert More Files</button>
+              </div>
+              <div class="stat-label">Average Savings</div>
             </div>
-            
-            {% if results.errors %}
-            <div class="errors">
-                <div class="error-title">⚠️ Some files couldn't be converted:</div>
-                {% for error in results.errors %}
-                    <div class="error-item">{{ error }}</div>
-                {% endfor %}
+            <div class="stat">
+              <div class="stat-number">
+                {{ format_file_size(results.files|sum(attribute='original_size')
+                - results.files|sum(attribute='converted_size')) }}
+              </div>
+              <div class="stat-label">Total Saved</div>
             </div>
-            {% endif %}
+          </div>
+        </div>
+
+        <div class="cleanup-timer">
+          ⏰ Files will be auto-deleted in:
+          <span class="timer-value" id="cleanupTimer">10:00</span>
+        </div>
+
+        <div class="files-grid">
+          {% for file in results.files %}
+          <div class="file-card">
+            <img src="{{ url_for('download_file', batch_id=results.batch_id, filename=file.filename) }}" class="result-preview-img" alt="{{ file.filename }}">
+            <div class="file-name">{{ file.filename }}</div>
+            <div class="file-sizes">
+              <div class="size-info">
+                <div class="size-label">Original</div>
+                <div class="size-value">
+                  {{ format_file_size(file.original_size) }}
+                </div>
+              </div>
+              <div class="size-info">
+                <div class="size-label">{% if results.mode == 'avif' %}AVIF{% elif results.mode == 'png' %}PNG{% else %}Compressed{% endif %}</div>
+                <div class="size-value">
+                  {{ format_file_size(file.converted_size) }}
+                </div>
+              </div>
+            </div>
+            <div class="savings {% if file.savings_percent < 0 %}warning{% endif %}">
+              {% if file.savings_percent > 0 %} 🎯 {{
+              "%.1f"|format(file.savings_percent) }}% smaller {% else %} 📈 {{
+              "%.1f"|format(-file.savings_percent) }}% larger {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+        <div class="download-section">
+          {% if results.is_batch %}
+          <a href="{{ url_for('download_batch', batch_id=results.batch_id) }}" class="download-btn"
+            >📦 Download All as ZIP</a
+          >
+          {% else %}
+          <a
+            href="{{ url_for('download_file', batch_id=results.batch_id, filename=results.files[0].filename, download=1) }}"
+            class="download-btn"
+            >⬇️ Download {{ results.files[0].filename }}</a
+          >
+          {% endif %}
+          <button onclick="clearFilesAndReload()" class="download-btn back-btn">
+            🔄 Convert More Files
+          </button>
+        </div>
+
+        {% if results.errors %}
+        <div class="errors">
+          <div class="error-title">⚠️ Some files couldn't be converted:</div>
+          {% for error in results.errors %}
+          <div class="error-item">{{ error }}</div>
+          {% endfor %}
         </div>
         {% endif %}
+      </div>
+      {% endif %}
     </div>
 
     <script src="{{ url_for('static', filename='script.js') }}"></script>
-</body>
+  </body>
 </html>
