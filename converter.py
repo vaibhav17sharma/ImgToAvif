@@ -52,21 +52,33 @@ def install_requirements():
     return True
 
 def cleanup_old_files():
-    """Remove files older than 1 hour from converted folder"""
+    """Remove batch folders and temporary zips older than 10 minutes"""
     current_time = time.time()
     if os.path.exists('converted'):
-        for filename in os.listdir('converted'):
-            filepath = os.path.join('converted', filename)
-            if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 3600:
-                try:
-                    os.remove(filepath)
-                except:
-                    pass
+        for item in os.listdir('converted'):
+            if item.startswith('.'):
+                continue
+            path = os.path.join('converted', item)
+            if os.path.isdir(path):
+                # Clean up old batch folders
+                if current_time - os.path.getctime(path) > 600:
+                    try:
+                        import shutil
+                        shutil.rmtree(path)
+                    except:
+                        pass
+            elif os.path.isfile(path) and item.startswith('converted_') and item.endswith('.zip'):
+                # Clean up temporary zips
+                if current_time - os.path.getctime(path) > 300:
+                    try:
+                        os.remove(path)
+                    except:
+                        pass
 
 def cleanup_files():
     """Background cleanup task"""
     while True:
-        time.sleep(3600)  # Wait 1 hour
+        time.sleep(60)  # Check every minute
         cleanup_old_files()
 
 def main():

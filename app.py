@@ -1,4 +1,6 @@
-from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session
+import math
+import shutil
+from flask import Flask, request, render_template, send_file, flash, redirect, url_for, session, after_this_request
 from PIL import Image
 import pillow_avif
 import pillow_heif
@@ -34,19 +36,44 @@ def allowed_file(filename, mode='avif'):
         return ext in ['png', 'jpg', 'jpeg']
     return False
 
+import time
+import threading
+
 def cleanup_old_files():
-    """Clean up files older than 10 minutes"""
-    import time
+    """Clean up folders older than 10 minutes"""
     current_time = time.time()
-    for folder in [CONVERTED_FOLDER]:
-        if os.path.exists(folder):
-            for filename in os.listdir(folder):
-                filepath = os.path.join(folder, filename)
-                if os.path.isfile(filepath) and current_time - os.path.getctime(filepath) > 600:
+    if os.path.exists(CONVERTED_FOLDER):
+        for batch_id in os.listdir(CONVERTED_FOLDER):
+            batch_path = os.path.join(CONVERTED_FOLDER, batch_id)
+            if os.path.isdir(batch_path):
+                # Check if the folder itself is old
+                if current_time - os.path.getctime(batch_path) > 600:
                     try:
-                        os.remove(filepath)
+                        shutil.rmtree(batch_path)
                     except:
                         pass
+            elif os.path.isfile(batch_path) and batch_id.startswith('converted_') and batch_id.endswith('.zip'):
+                # Clean up temporary zip files
+                if current_time - os.path.getctime(batch_path) > 300: # 5 minutes for zips
+                    try:
+                        os.remove(batch_path)
+                    except:
+                        pass
+
+def start_cleanup_thread():
+    def run_cleanup():
+        while True:
+            cleanup_old_files()
+            time.sleep(60)
+    
+    thread = threading.Thread(target=run_cleanup, daemon=True)
+    thread.start()
+
+# Start background cleanup
+if not os.environ.get('WERKZEUG_RUN_MAIN'): # Prevent double-start in debug mode
+    start_cleanup_thread()
+
+# ... (start_cleanup_thread remains same, just ensuring it calls this updated version)
 
 @app.route('/')
 def index():
@@ -55,24 +82,20 @@ def index():
 @app.route('/upload', methods=['POST'])
 def upload_file():
     if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        # AJAX request - return JSON
         return upload_ajax()
     else:
-        # Regular form submission - return HTML
         return upload_form()
 
 def upload_ajax():
-    # Handle AJAX upload and return JSON response
-    cleanup_old_files()
-    
     files = request.files.getlist('files')
     mode = request.form.get('mode', 'avif')
     
     if not files or all(f.filename == '' for f in files):
         return {'success': False, 'error': 'No files selected'}
     
-    if len(files) > 50:
-        return {'success': False, 'error': 'Maximum 50 files allowed per batch'}
+    batch_id = str(uuid.uuid4())[:12]
+    batch_folder = os.path.join(CONVERTED_FOLDER, batch_id)
+    os.makedirs(batch_folder, exist_ok=True)
     
     converted_files = []
     errors = []
@@ -81,72 +104,44 @@ def upload_ajax():
     for file in files:
         if not file or not file.filename:
             continue
-            
         if not allowed_file(file.filename, mode):
             skipped.append(file.filename)
             continue
-            
         filename = secure_filename(file.filename)
-        if not filename:
-            skipped.append(file.filename)
-            continue
-            
         try:
-            # Reset file pointer
             file.stream.seek(0)
             original_size = len(file.read())
             file.stream.seek(0)
-            
-            # Validate image
             img = Image.open(file.stream)
             img.verify()
-            
-            # Reset and reopen for conversion
             file.stream.seek(0)
             img = Image.open(file.stream)
             
-            # Convert based on mode
             base_name = filename.rsplit('.', 1)[0]
-            
             if mode == 'avif':
-                # Convert to RGB only for non-transparent formats
                 if img.mode in ('LA', 'P'):
-                    if 'transparency' in img.info:
-                        img = img.convert('RGBA')
-                    else:
-                        img = img.convert('RGB')
-                
+                    img = img.convert('RGBA' if 'transparency' in img.info else 'RGB')
                 output_filename = f"{base_name}.avif"
-                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                output_path = os.path.join(batch_folder, output_filename)
                 img.save(output_path, 'AVIF', lossless=True)
-                
             elif mode == 'png':
-                # Convert HEIC to PNG
                 if img.mode not in ('RGB', 'RGBA'):
                     img = img.convert('RGB')
-                
                 output_filename = f"{base_name}.png"
-                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                output_path = os.path.join(batch_folder, output_filename)
                 img.save(output_path, 'PNG')
-                
             elif mode == 'compress':
-                # Lossless compression for same format
                 original_ext = filename.rsplit('.', 1)[1].lower()
                 if original_ext in ['jpg', 'jpeg']:
-                    if img.mode in ('RGBA', 'LA'):
-                        img = img.convert('RGB')
+                    if img.mode in ('RGBA', 'LA'): img = img.convert('RGB')
                     output_filename = f"{base_name}.jpg"
-                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    output_path = os.path.join(batch_folder, output_filename)
                     img.save(output_path, 'JPEG', quality=95, optimize=True)
-                else:  # PNG
+                else:
                     output_filename = f"{base_name}.png"
-                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    output_path = os.path.join(batch_folder, output_filename)
                     img.save(output_path, 'PNG', optimize=True)
             
-            # Ensure converted folder exists
-            os.makedirs(CONVERTED_FOLDER, exist_ok=True)
-            
-            # Get converted file size
             converted_size = os.path.getsize(output_path)
             savings_percent = ((original_size - converted_size) / original_size) * 100
             
@@ -157,7 +152,6 @@ def upload_ajax():
                 'converted_size': converted_size,
                 'savings_percent': savings_percent
             })
-            
         except Exception as e:
             errors.append(f"{file.filename}: {str(e)}")
     
@@ -166,6 +160,7 @@ def upload_ajax():
     
     return {
         'success': True,
+        'batch_id': batch_id,
         'files': converted_files,
         'errors': errors,
         'skipped': skipped,
@@ -174,168 +169,120 @@ def upload_ajax():
     }
 
 def upload_form():
-    cleanup_old_files()
-    
     mode = request.form.get('mode', 'avif')
-    
-    if 'files' not in request.files:
-        flash('No files selected')
-        return redirect(url_for('index'))
-    
     files = request.files.getlist('files')
     if not files or all(f.filename == '' for f in files):
         flash('No files selected')
         return redirect(url_for('index'))
     
-    if len(files) > 50:
-        flash('Maximum 50 files allowed per batch')
-        return redirect(url_for('index'))
+    batch_id = str(uuid.uuid4())[:12]
+    batch_folder = os.path.join(CONVERTED_FOLDER, batch_id)
+    os.makedirs(batch_folder, exist_ok=True)
     
     converted_files = []
     errors = []
     skipped = []
     
     for file in files:
-        if not file or not file.filename:
-            continue
-            
+        if not file or not file.filename: continue
         if not allowed_file(file.filename, mode):
             skipped.append(file.filename)
             continue
-            
         filename = secure_filename(file.filename)
-        if not filename:
-            skipped.append(file.filename)
-            continue
-            
         try:
-            # Reset file pointer
             file.stream.seek(0)
             original_size = len(file.read())
             file.stream.seek(0)
-            
-            # Validate image
             img = Image.open(file.stream)
             img.verify()
-            
-            # Reset and reopen for conversion
             file.stream.seek(0)
             img = Image.open(file.stream)
-            
-            # Convert based on mode
             base_name = filename.rsplit('.', 1)[0]
-            
             if mode == 'avif':
-                # Convert to RGB only for non-transparent formats
                 if img.mode in ('LA', 'P'):
-                    if 'transparency' in img.info:
-                        img = img.convert('RGBA')
-                    else:
-                        img = img.convert('RGB')
-                
+                    img = img.convert('RGBA' if 'transparency' in img.info else 'RGB')
                 output_filename = f"{base_name}.avif"
-                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                output_path = os.path.join(batch_folder, output_filename)
                 img.save(output_path, 'AVIF', lossless=True)
-                
             elif mode == 'png':
-                # Convert HEIC to PNG
                 if img.mode not in ('RGB', 'RGBA'):
                     img = img.convert('RGB')
-                
                 output_filename = f"{base_name}.png"
-                output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                output_path = os.path.join(batch_folder, output_filename)
                 img.save(output_path, 'PNG')
-                
-            elif mode == 'compress':
-                # Lossless compression for same format
+            else:
                 original_ext = filename.rsplit('.', 1)[1].lower()
                 if original_ext in ['jpg', 'jpeg']:
-                    if img.mode in ('RGBA', 'LA'):
-                        img = img.convert('RGB')
+                    if img.mode in ('RGBA', 'LA'): img = img.convert('RGB')
                     output_filename = f"{base_name}.jpg"
-                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    output_path = os.path.join(batch_folder, output_filename)
                     img.save(output_path, 'JPEG', quality=95, optimize=True)
-                else:  # PNG
+                else:
                     output_filename = f"{base_name}.png"
-                    output_path = os.path.join(CONVERTED_FOLDER, output_filename)
+                    output_path = os.path.join(batch_folder, output_filename)
                     img.save(output_path, 'PNG', optimize=True)
             
-            # Ensure converted folder exists
-            os.makedirs(CONVERTED_FOLDER, exist_ok=True)
-            
-            # Get converted file size
             converted_size = os.path.getsize(output_path)
-            savings_percent = ((original_size - converted_size) / original_size) * 100
-            
             converted_files.append({
-                'path': output_path,
                 'filename': output_filename,
                 'original_name': filename,
                 'original_size': original_size,
                 'converted_size': converted_size,
-                'savings_percent': savings_percent
+                'savings_percent': ((original_size - converted_size) / original_size) * 100
             })
-            
         except Exception as e:
             errors.append(f"{file.filename}: {str(e)}")
-    
-    # Show summary messages
-    if errors:
-        for error in errors[:5]:  # Show max 5 errors
-            flash(f'Error: {error}')
-        if len(errors) > 5:
-            flash(f'... and {len(errors) - 5} more errors')
-    
-    if skipped:
-        flash(f'Skipped {len(skipped)} unsupported files')
-    
+
     if not converted_files:
         flash('No files were converted successfully')
         return redirect(url_for('index'))
-    
-    # Show results on the same page (fallback for non-JS)
-    return render_template('index.html', 
-                         results={
-                             'files': converted_files,
-                             'errors': errors,
-                             'skipped': skipped,
-                             'is_batch': len(converted_files) > 1,
-                             'mode': mode
-                         })
 
-@app.route('/download/<filename>')
-def download_file(filename):
-    file_path = os.path.join(CONVERTED_FOLDER, filename)
+    return render_template('index.html', results={
+        'batch_id': batch_id,
+        'files': converted_files,
+        'errors': errors,
+        'skipped': skipped,
+        'is_batch': len(converted_files) > 1,
+        'mode': mode
+    })
+
+@app.route('/download/<batch_id>/<filename>')
+def download_file(batch_id, filename):
+    file_path = os.path.join(CONVERTED_FOLDER, batch_id, filename)
     if os.path.exists(file_path):
-        return send_file(file_path, as_attachment=True, download_name=filename)
+        should_download = request.args.get('download') == '1'
+        return send_file(file_path, as_attachment=should_download, download_name=filename)
     return redirect(url_for('index'))
 
-@app.route('/download_batch')
-def download_batch():
-    # Create zip for batch download
-    zip_filename = f'converted_images_{str(uuid.uuid4())[:8]}.zip'
+@app.route('/download_batch/<batch_id>')
+def download_batch(batch_id):
+    batch_folder = os.path.join(CONVERTED_FOLDER, batch_id)
+    if not os.path.exists(batch_folder):
+        return redirect(url_for('index'))
+        
+    zip_filename = f'converted_{batch_id}.zip'
     zip_path = os.path.join(CONVERTED_FOLDER, zip_filename)
     
-    # Get all converted files from converted folder
     try:
         with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zipf:
-            for filename in os.listdir(CONVERTED_FOLDER):
-                if filename.endswith(('.avif', '.png', '.jpg', '.jpeg')):
-                    file_path = os.path.join(CONVERTED_FOLDER, filename)
-                    zipf.write(file_path, filename)
+            for filename in os.listdir(batch_folder):
+                file_path = os.path.join(batch_folder, filename)
+                zipf.write(file_path, filename)
         
         return send_file(zip_path, as_attachment=True, download_name=zip_filename)
-        
     except Exception as e:
-        flash(f'Error creating zip file: {str(e)}')
+        if os.path.exists(zip_path):
+            os.remove(zip_path)
+        flash(f'Error: {str(e)}')
         return redirect(url_for('index'))
 
-@app.route('/clear_files', methods=['POST'])
-def clear_files():
+@app.route('/clear_files/<batch_id>', methods=['POST'])
+def clear_files(batch_id):
+    batch_folder = os.path.join(CONVERTED_FOLDER, batch_id)
     try:
-        for filename in os.listdir(CONVERTED_FOLDER):
-            if not filename.startswith('.'):
-                os.remove(os.path.join(CONVERTED_FOLDER, filename))
+        if os.path.exists(batch_folder):
+            import shutil
+            shutil.rmtree(batch_folder)
         return {'success': True}
     except:
         return {'success': False}
@@ -349,11 +296,16 @@ def format_file_size(size_bytes):
     """Format file size in human readable format"""
     if size_bytes == 0:
         return "0 B"
+    
+    # Handle negative sizes (for size increases)
+    prefix = "-" if size_bytes < 0 else ""
+    size_bytes = abs(size_bytes)
+    
     size_names = ["B", "KB", "MB", "GB"]
     i = int(math.floor(math.log(size_bytes, 1024)))
     p = math.pow(1024, i)
     s = round(size_bytes / p, 2)
-    return f"{s} {size_names[i]}"
+    return f"{prefix}{s} {size_names[i]}"
 
 # Make format_file_size available in templates
 app.jinja_env.globals.update(format_file_size=format_file_size)
